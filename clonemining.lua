@@ -73,7 +73,7 @@ local function runTeleportSequence()
     teleportSafe(vehicle, char, spot2)
 
     -- บังคับกระโดด (ใช้ Velocity + KeyPress)
-    task.wait(1)
+    task.wait(1.5)
     hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0) -- ดีดตัวขึ้น
     vim:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
     task.wait(0.1)
