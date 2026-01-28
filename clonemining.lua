@@ -105,7 +105,7 @@ local screenGui = Instance.new("ScreenGui", player.PlayerGui)
 screenGui.ResetOnSpawn = false
 local toggleBtn = Instance.new("TextButton", screenGui)
 toggleBtn.Size = UDim2.new(0, 50, 0, 30)
-toggleBtn.Position = UDim2.new(0.2, 50, 0.7, 0)
+toggleBtn.Position = UDim2.new(0.2, 50, 0.2, 0)
 toggleBtn.Text = "OFF"
 toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 Instance.new("UICorner", toggleBtn)
