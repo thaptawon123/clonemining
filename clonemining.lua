@@ -18,7 +18,7 @@ end
 
 -- [ 2. ตั้งค่าพิกัด ] --
 local spot1 = CFrame.new(1462.61182, 8, 1585.5) 
-local spot2 = CFrame.new(152.182297, 186, 1934.83044) 
+local spot2 = CFrame.new(152.182297, 185, 1934.83044) 
 local spot3 = CFrame.new(165.94252, 188.178406, 1914.70117, 0, 0, 1, 0, 1, -0, -1, 0, 0) 
 local targetPos = Vector3.new(1450.85229, 10.5002451, 1595.5697) 
 
@@ -105,7 +105,7 @@ local screenGui = Instance.new("ScreenGui", player.PlayerGui)
 screenGui.ResetOnSpawn = false
 local toggleBtn = Instance.new("TextButton", screenGui)
 toggleBtn.Size = UDim2.new(0, 50, 0, 30)
-toggleBtn.Position = UDim2.new(0, 50, 0.5, 0)
+toggleBtn.Position = UDim2.new(0.5, 50, 0.5, 0)
 toggleBtn.Text = "OFF"
 toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 Instance.new("UICorner", toggleBtn)
