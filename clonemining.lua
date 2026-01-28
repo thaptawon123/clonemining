@@ -128,7 +128,7 @@ task.spawn(function()
                     local p = m:FindFirstChild("HumanoidRootPart") or m:FindFirstChildWhichIsA("BasePart")
                     if p and (p.Position - targetPos).Magnitude < 10 then 
                         minerIdleTimes[m.Name] = (minerIdleTimes[m.Name] or 0) + 1
-                        if minerIdleTimes[m.Name] >= 10 then trigger = true break end
+                        if minerIdleTimes[m.Name] >= 20 then trigger = true break end
                     else minerIdleTimes[m.Name] = 0 end
                 end
             end
