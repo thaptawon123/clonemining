@@ -118,7 +118,7 @@ task.spawn(function()
                 vim:SendKeyEvent(true, Enum.KeyCode.W, false, game) task.wait(2) vim:SendKeyEvent(false, Enum.KeyCode.W, false, game)
                 hrp.CFrame = spotButton task.wait(1.5)
                 vim:SendKeyEvent(true, Enum.KeyCode.E, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                task.wait(2.5)
+                task.wait(3)
                 vim:SendKeyEvent(true, Enum.KeyCode.One, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.One, false, game)
                 task.wait(4)
                 hrp.CFrame = spotWait
