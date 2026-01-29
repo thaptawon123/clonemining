@@ -137,3 +137,53 @@ task.spawn(function()
         task.wait(1)
     end
 end)
+
+-- [ 8. ระบบ Direct Auto Rebirth ] --
+task.spawn(function()
+    while task.wait(3) do
+        if isChecking then
+            local pGui = player:FindFirstChild("PlayerGui")
+            if not pGui then continue end
+
+            local rebirthScreen = pGui:FindFirstChild("RebirthScreen")
+            local rebirthFrame = rebirthScreen and rebirthScreen:FindFirstChild("Rebirth")
+            local leftHud = pGui:FindFirstChild("LeftHUD")
+
+            -- ฟังก์ชันสั่งรันสัญญาณจากปุ่มโดยตรง
+            local function fireButton(btn)
+                if btn and btn.Visible then
+                    -- สั่งรันโค้ดเบื้องหลังของปุ่ม (MouseButton1Click)
+                    if firesignal then
+                        firesignal(btn.MouseButton1Click)
+                        firesignal(btn.MouseButton1Down)
+                    end
+                    return true
+                end
+                return false
+            end
+
+            -- ตรวจสอบหน้าต่าง Rebirth
+            if rebirthFrame and rebirthFrame.Visible then
+                local container = rebirthFrame:FindFirstChild("ButtonContainer")
+                if container then
+                    for _, btn in pairs(container:GetChildren()) do
+                        if btn:IsA("GuiButton") and btn.Name ~= "Close" and btn.Name ~= "Back" then
+                            fireButton(btn)
+                            print("Direct Rebirth: กดยืนยันแล้ว")
+                            task.wait(3)
+                            break
+                        end
+                    end
+                end
+            else
+                -- ถ้าหน้าต่างปิดอยู่ ให้ลองกดปุ่ม Rebirth ที่ LeftHUD
+                if leftHud then
+                    local openBtn = leftHud:FindFirstChild("Rebirth", true)
+                    if openBtn and openBtn.Visible then
+                        fireButton(openBtn)
+                    end
+                end
+            end
+        end
+    end
+end)
