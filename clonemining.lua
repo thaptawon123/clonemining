@@ -7,13 +7,13 @@ _G.RebirthEnabled = false
 
 -- [[ 2. สร้าง UI Control Panel (แบบพับได้) ]] --
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "MinerTycoon_Final_Fixed_V2"
+screenGui.Name = "MinerTycoon_Hybrid_V3"
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Size = UDim2.new(0, 160, 0, 160)
 mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.Draggable = true
 mainFrame.Active = true
 Instance.new("UICorner", mainFrame)
@@ -67,47 +67,58 @@ end
 createToggle("Auto Farm", UDim2.new(0, 10, 0, 5), "TeleportEnabled")
 createToggle("Auto Rebirth", UDim2.new(0, 10, 0, 60), "RebirthEnabled")
 
--- [[ 3. ระบบ Auto Rebirth (ปรับปรุงใหม่ให้ทำงานแน่นอน) ]] --
+-- [[ 3. ระบบ DIRECT AUTO REBIRTH (ตรรกะที่คุณให้มา + ปรับปรุง) ]] --
 task.spawn(function()
-    while task.wait(4) do
+    while task.wait(2) do
         if _G.RebirthEnabled then
-            -- 1. พยายามยิง Remote (หาทุกชื่อที่เป็นไปได้)
-            local rebirthRemote = game:FindFirstChild("Rebirth", true) or game:FindFirstChild("DoRebirth", true)
-            if rebirthRemote then 
-                rebirthRemote:FireServer() 
-            end
-            
-            -- 2. ดักจับปุ่มยืนยันบนหน้าจอ (ถ้ามีหน้าต่างเด้งขึ้นมา)
             local pGui = player:FindFirstChild("PlayerGui")
-            if pGui then
-                for _, gui in pairs(pGui:GetChildren()) do
-                    if gui:IsA("ScreenGui") and gui.Enabled then
-                        for _, btn in pairs(gui:GetDescendants()) do
-                            if btn:IsA("TextButton") and btn.Visible and btn.AbsoluteSize.X > 0 then
-                                -- เช็คข้อความบนปุ่ม
-                                local txt = btn.Text:lower()
-                                if txt:find("rebirth") or txt:find("เกิดใหม่") or txt:find("ยืนยัน") then
-                                    local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
-                                    local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 58
-                                    vim:SendMouseButtonEvent(x, y, 0, true, game, 1)
-                                    task.wait(0.1)
-                                    vim:SendMouseButtonEvent(x, y, 0, false, game, 1)
-                                end
+            local leftHud = pGui and pGui:FindFirstChild("LeftHUD")
+            local rebirthScreen = pGui and pGui:FindFirstChild("RebirthScreen")
+            local rebirthFrame = rebirthScreen and rebirthScreen:FindFirstChild("Rebirth")
+
+            -- เช็คว่าปุ่ม Rebirth ที่มุมจอแสดงขึ้นมาหรือยัง
+            local isReady = (leftHud and leftHud:FindFirstChild("Rebirth", true) and leftHud:FindFirstChild("Rebirth", true).Visible) 
+                             or (rebirthFrame and rebirthFrame.Visible)
+
+            if isReady then
+                -- ลองส่งสัญญาณ Remote ก่อน (Method 1)
+                local rbRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Rebirth", true)
+                if rbRemote and rbRemote:IsA("RemoteEvent") then
+                    rbRemote:FireServer()
+                end
+
+                -- สั่งรันฟังก์ชันจากปุ่มยืนยันโดยตรง (Method 2: firesignal)
+                local container = rebirthFrame and rebirthFrame:FindFirstChild("ButtonContainer")
+                if container then
+                    for _, btn in pairs(container:GetChildren()) do
+                        if btn:IsA("GuiButton") and btn.Name ~= "Close" and btn.Name ~= "Back" then
+                            if firesignal then
+                                firesignal(btn.MouseButton1Click)
+                                firesignal(btn.MouseButton1Down)
+                            else
+                                -- ถ้า Executor ไม่รองรับ firesignal ให้ใช้การคลิกจำลอง
+                                local x = btn.AbsolutePosition.X + (btn.AbsoluteSize.X / 2)
+                                local y = btn.AbsolutePosition.Y + (btn.AbsoluteSize.Y / 2) + 58
+                                vim:SendMouseButtonEvent(x, y, 0, true, game, 1)
+                                task.wait(0.1)
+                                vim:SendMouseButtonEvent(x, y, 0, false, game, 1)
                             end
+                            break
                         end
                     end
                 end
+                task.wait(3) -- รอระบบรีเซ็ต
             end
         end
     end
 end)
 
--- [[ 4. ระบบ TELEPORT FARM (ปรับปรุงดีเลย์ตามพิกัดเดิม) ]] --
+-- [[ 4. ระบบ TELEPORT FARM (สูตรเดิมของคุณ) ]] --
 task.spawn(function()
     local spotWait = CFrame.new(1462.61182, 8, 1585.5) 
     local spotCar = CFrame.new(1420.23901, 12.1875057, 1602.05542) 
     local spotFreeze = CFrame.new(152.182297, 186, 1934.83044) 
-    local spotButton = CFrame.new(165.94252, 188.178406, 1915.70117) 
+    local spotButton = CFrame.new(166.94252, 188.178406, 1915.70117) 
     local targetPos = Vector3.new(1450.85229, 10.5002451, 1595.5697) 
     local minerIdleTimes = {}
 
@@ -130,33 +141,21 @@ task.spawn(function()
             if trigger and vehicle then
                 local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then continue end
-                
-                -- วาร์ปไปที่รถ
                 hrp.CFrame = spotCar task.wait(0.6)
                 vehicle:PivotTo(spotFreeze)
-                
-                -- ปลดสมอและแช่แข็ง
                 for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = false end end
                 task.wait(0.6)
                 for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = true end end
-                
-                -- กระโดดออก
                 hrp.CFrame = spotFreeze * CFrame.new(0, 4, 0) task.wait(0.4)
                 hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0)
                 vim:SendKeyEvent(true, Enum.KeyCode.Space, false, game) task.wait(0.1) vim:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
                 task.wait(0.2)
-                
-                -- เดินหน้าและกดปุ่ม
                 vim:SendKeyEvent(true, Enum.KeyCode.W, false, game) task.wait(2) vim:SendKeyEvent(false, Enum.KeyCode.W, false, game)
                 hrp.CFrame = spotButton task.wait(1.5)
                 vim:SendKeyEvent(true, Enum.KeyCode.E, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                
                 task.wait(3)
                 vim:SendKeyEvent(true, Enum.KeyCode.One, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                
                 task.wait(4)
-                
-                -- วาร์ปกลับจุดรอ
                 hrp.CFrame = spotWait
                 for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = false end end
                 minerIdleTimes = {}
