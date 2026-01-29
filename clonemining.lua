@@ -187,3 +187,35 @@ task.spawn(function()
         end
     end
 end)
+
+-- [ 9. ระบบ Auto Buy Miners (จ้างคนขุด) ] --
+task.spawn(function()
+    while task.wait(4) do
+        if isChecking then
+            local pGui = player.PlayerGui
+            -- 1. ตรวจเช็คหน้าต่าง Miner (ปรับชื่อตามจริงในเครื่องคุณ)
+            local minerScreen = pGui:FindFirstChild("MinerScreen") or pGui:FindFirstChild("ShopScreen")
+            local minerFrame = minerScreen and (minerScreen:FindFirstChild("Main") or minerScreen:FindFirstChild("Frame"))
+            
+            if minerFrame and minerFrame.Visible then
+                -- 2. ค้นหาปุ่มซื้อ (Hire) ภายในรายการ
+                local scrollingFrame = minerFrame:FindFirstChildWhichIsA("ScrollingFrame", true)
+                if scrollingFrame then
+                    for _, item in pairs(scrollingFrame:GetChildren()) do
+                        -- ค้นหาปุ่ม "Hire" หรือ "จ้าง"
+                        local buyBtn = item:FindFirstChild("Buy") or item:FindFirstChild("Hire") or item:FindFirstChildWhichIsA("GuiButton", true)
+                        if buyBtn and buyBtn.Visible then
+                            forceClick(buyBtn)
+                            task.wait(0.5) -- กันการซื้อรัวเกินไปจนเงินติดลบ
+                        end
+                    end
+                end
+            else
+                -- 3. ถ้าหน้าต่างไม่เปิด ให้หาปุ่มเปิดเมนู "คนขุดแร่"
+                local leftHud = pGui:FindFirstChild("LeftHUD")
+                local openMinerBtn = leftHud and (leftHud:FindFirstChild("Miners", true) or leftHud:FindFirstChild("Shop", true))
+                if openMinerBtn then forceClick(openMinerBtn) end
+            end
+        end
+    end
+end)
