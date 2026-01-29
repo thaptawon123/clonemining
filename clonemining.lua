@@ -1,144 +1,129 @@
 local player = game.Players.LocalPlayer
 local vim = game:GetService("VirtualInputManager")
-local events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
 
--- [ ตัวแปรสถานะ แยกแต่ละระบบ ] --
-_G.AutoTeleport = false
-_G.AutoRebirth = false
-_G.AutoHire = false
+-- [ 1. ตั้งค่าสถานะ ] --
+_G.TeleportEnabled = false
+_G.RebirthEnabled = false
 
--- [[ 1. ระบบ ANTI-AFK (คงเดิม) ]] --
-local GC = getconnections or get_signal_connections
-if GC then
-    for i, v in pairs(GC(player.Idled)) do
-        if v["Disable"] then v["Disable"](v)
-        elseif v["Disconnect"] then v["Disconnect"](v) end
-    end
-else
-    player.Idled:Connect(function()
-        vim:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-        task.wait(0.1)
-        vim:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+-- [[ 2. สร้าง UI Control Panel (แบบพับได้) ]] --
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "MinerTycoon_Final_v2"
+screenGui.ResetOnSpawn = false
+
+local mainFrame = Instance.new("Frame", screenGui)
+mainFrame.Size = UDim2.new(0, 160, 0, 160)
+mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+mainFrame.Draggable = true
+mainFrame.Active = true
+Instance.new("UICorner", mainFrame)
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(1, -30, 0, 30)
+title.Text = "  CONTROL"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.BackgroundTransparency = 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Font = Enum.Font.GothamBold
+
+-- [ ปุ่มพับ UI ] --
+local toggleMenu = Instance.new("TextButton", mainFrame)
+toggleMenu.Size = UDim2.new(0, 25, 0, 25)
+toggleMenu.Position = UDim2.new(1, -28, 0, 3)
+toggleMenu.Text = "-"
+toggleMenu.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleMenu.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", toggleMenu)
+
+local content = Instance.new("Frame", mainFrame)
+content.Size = UDim2.new(1, 0, 1, -35)
+content.Position = UDim2.new(0, 0, 0, 35)
+content.BackgroundTransparency = 1
+
+local isCollapsed = false
+toggleMenu.MouseButton1Click:Connect(function()
+    isCollapsed = not isCollapsed
+    content.Visible = not isCollapsed
+    mainFrame.Size = isCollapsed and UDim2.new(0, 160, 0, 32) or UDim2.new(0, 160, 0, 160)
+    toggleMenu.Text = isCollapsed and "+" or "-"
+end)
+
+local function createToggle(name, pos, globalVar)
+    local btn = Instance.new("TextButton", content)
+    btn.Size = UDim2.new(0, 140, 0, 45)
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    btn.Text = name .. ": OFF"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", btn)
+
+    btn.MouseButton1Click:Connect(function()
+        _G[globalVar] = not _G[globalVar]
+        btn.Text = name .. ": " .. (_G[globalVar] and "ON" or "OFF")
+        btn.BackgroundColor3 = _G[globalVar] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(150, 0, 0)
     end)
 end
 
--- [[ 2. สร้าง UI Control Panel ]] --
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.Name = "ControlPanel"
-screenGui.ResetOnSpawn = false
+createToggle("Auto Farm", UDim2.new(0, 10, 0, 5), "TeleportEnabled")
+createToggle("Auto Rebirth", UDim2.new(0, 10, 0, 60), "RebirthEnabled")
 
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 150, 0, 180)
-frame.Position = UDim2.new(0.1, 0, 0.2, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-Instance.new("UICorner", frame)
-
-local label = Instance.new("TextLabel", frame)
-label.Size = UDim2.new(1, 0, 0, 30)
-label.Text = "HACK MENU"
-label.TextColor3 = Color3.new(1, 1, 1)
-label.BackgroundTransparency = 1
-
-local function createBtn(name, pos, color)
-    local btn = Instance.new("TextButton", frame)
-    btn.Name = name
-    btn.Size = UDim2.new(0.9, 0, 0, 35)
-    btn.Position = pos
-    btn.BackgroundColor3 = color
-    btn.Text = name .. ": OFF"
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    Instance.new("UICorner", btn)
-    return btn
-end
-
-local btnTele = createBtn("Teleport", UDim2.new(0.05, 0, 0.2, 0), Color3.fromRGB(200, 50, 50))
-local btnRebirth = createBtn("Rebirth", UDim2.new(0.05, 0, 0.45, 0), Color3.fromRGB(200, 50, 50))
-local btnHire = createBtn("HireMiner", UDim2.new(0.05, 0, 0.7, 0), Color3.fromRGB(200, 50, 50))
-
--- [[ 3. ฟังก์ชันปุ่มกด ]] --
-btnTele.MouseButton1Click:Connect(function()
-    _G.AutoTeleport = not _G.AutoTeleport
-    btnTele.Text = "Teleport: " .. (_G.AutoTeleport and "ON" or "OFF")
-    btnTele.BackgroundColor3 = _G.AutoTeleport and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-end)
-
-btnRebirth.MouseButton1Click:Connect(function()
-    _G.AutoRebirth = not _G.AutoRebirth
-    btnRebirth.Text = "Rebirth: " .. (_G.AutoRebirth and "ON" or "OFF")
-    btnRebirth.BackgroundColor3 = _G.AutoRebirth and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-end)
-
-btnHire.MouseButton1Click:Connect(function()
-    _G.AutoHire = not _G.AutoHire
-    btnHire.Text = "HireMiner: " .. (_G.AutoHire and "ON" or "OFF")
-    btnHire.BackgroundColor3 = _G.AutoHire and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-end)
-
--- [[ 4. ระบบ Teleport (โค้ดชุดแรกของคุณ - ไม่แก้ไขโครงสร้าง) ]] --
-local spot1 = CFrame.new(1462.61182, 8, 1585.5) 
-local spot2 = CFrame.new(152.182297, 185, 1934.83044) 
-local spot3 = CFrame.new(165.94252, 188.178406, 1914.70117, 0, 0, 1, 0, 1, -0, -1, 0, 0) 
-local targetPos = Vector3.new(1450.85229, 10.5002451, 1595.5697) 
-local minerIdleTimes = {}
-
+-- [[ 3. ระบบ Auto Rebirth (ดักจับ Remote ทั่วทั้งเกม) ]] --
 task.spawn(function()
+    while task.wait(5) do
+        if _G.RebirthEnabled then
+            local rebirthRemote = game:FindFirstChild("Rebirth", true) or game:FindFirstChild("DoRebirth", true)
+            if rebirthRemote then rebirthRemote:FireServer() end
+        end
+    end
+end)
+
+-- [[ 4. ระบบ TELEPORT FARM (สูตรแช่แข็งรถที่ดีที่สุด) ]] --
+task.spawn(function()
+    local spotWait = CFrame.new(1462.61182, 8, 1585.5) 
+    local spotCar = CFrame.new(1420.23901, 12.1875057, 1602.05542) 
+    local spotFreeze = CFrame.new(152.182297, 186, 1934.83044) 
+    local spotButton = CFrame.new(166.94252, 188.178406, 1915.70117) 
+    local targetPos = Vector3.new(1450.85229, 10.5002451, 1595.5697) 
+    local minerIdleTimes = {}
+
     while task.wait(1) do
-        if _G.AutoTeleport then
-            local root = workspace:FindFirstChild("TycoonModels") and workspace.TycoonModels:FindFirstChild("4030205055")
-            local miners = (root and root:FindFirstChild("Miners")) or workspace:FindFirstChild("Miners", true)
+        if _G.TeleportEnabled then
+            local vehicle = workspace:FindFirstChild("MinecartVehicle", true)
+            local miners = workspace:FindFirstChild("Miners", true)
+            
             local trigger = false
             if miners then
                 for _, m in pairs(miners:GetChildren()) do
                     local p = m:FindFirstChild("HumanoidRootPart") or m:FindFirstChildWhichIsA("BasePart")
                     if p and (p.Position - targetPos).Magnitude < 15 then 
                         minerIdleTimes[m.Name] = (minerIdleTimes[m.Name] or 0) + 1
-                        if minerIdleTimes[m.Name] >= 20 then trigger = true break end
+                        if minerIdleTimes[m.Name] >= 15 then trigger = true break end
                     else minerIdleTimes[m.Name] = 0 end
                 end
             end
-            if trigger then
-                -- Teleport Sequence
-                local char = player.Character
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                local vehicle = (root and root:FindFirstChild("MinecartVehicles") and root.MinecartVehicles:FindFirstChild("MinecartVehicle")) or workspace:FindFirstChild("MinecartVehicle", true)
-                if hrp and vehicle then
-                    for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-                    vehicle:PivotTo(spot2) hrp.CFrame = spot2 * CFrame.new(0, 3, 0)
-                    task.wait(1.5)
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0)
-                    vim:SendKeyEvent(true, Enum.KeyCode.Space, false, game) task.wait(0.1) vim:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-                    task.wait(4) hrp.CFrame = spot3 task.wait(4)
-                    vim:SendKeyEvent(true, Enum.KeyCode.E, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    task.wait(4) vim:SendKeyEvent(true, Enum.KeyCode.One, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.One, false, game)
-                    task.wait(1) hrp.CFrame = spot1
-                    minerIdleTimes = {}
-                end
-            end
-        end
-    end
-end)
 
--- [[ 5. ระบบ Direct Rebirth (แยกส่วน) ]] --
-task.spawn(function()
-    while task.wait(3) do
-        if _G.AutoRebirth then
-            local openBtn = player.PlayerGui:FindFirstChild("Rebirth", true)
-            if openBtn and openBtn.Visible then
-                events.Rebirth:FireServer()
-                print("Direct Rebirth Sent!")
-                task.wait(2)
-            end
-        end
-    end
-end)
-
--- [[ 6. ระบบ Direct HireMiner (แยกส่วน) ]] --
-task.spawn(function()
-    while task.wait(3) do
-        if _G.AutoHire then
-            for i = 1, 12 do -- จ้าง ID 1 ถึง 12
-                events.HireMiner:FireServer(i)
+            if trigger and vehicle then
+                local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then continue end
+                hrp.CFrame = spotCar task.wait(0.6)
+                vehicle:PivotTo(spotFreeze)
+                for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = false end end
+                task.wait(0.6)
+                for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = true end end
+                hrp.CFrame = spotFreeze * CFrame.new(0, 4, 0) task.wait(0.4)
+                hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0)
+                vim:SendKeyEvent(true, Enum.KeyCode.Space, false, game) task.wait(0.1) vim:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                task.wait(0.2)
+                vim:SendKeyEvent(true, Enum.KeyCode.W, false, game) task.wait(2) vim:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+                hrp.CFrame = spotButton task.wait(1.5)
+                vim:SendKeyEvent(true, Enum.KeyCode.E, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                task.wait(2.5)
+                vim:SendKeyEvent(true, Enum.KeyCode.One, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+                task.wait(4)
+                hrp.CFrame = spotWait
+                for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.Anchored = false end end
+                minerIdleTimes = {}
             end
         end
     end
