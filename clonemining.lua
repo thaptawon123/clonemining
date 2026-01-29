@@ -1,7 +1,13 @@
 local player = game.Players.LocalPlayer
 local vim = game:GetService("VirtualInputManager")
+local events = game:GetService("ReplicatedStorage"):WaitForChild("Events")
 
--- [ 1. ระบบ Anti-AFK ] --
+-- [ ตัวแปรสถานะ แยกแต่ละระบบ ] --
+_G.AutoTeleport = false
+_G.AutoRebirth = false
+_G.AutoHire = false
+
+-- [[ 1. ระบบ ANTI-AFK (คงเดิม) ]] --
 local GC = getconnections or get_signal_connections
 if GC then
     for i, v in pairs(GC(player.Idled)) do
@@ -16,205 +22,123 @@ else
     end)
 end
 
--- [ 2. ตั้งค่าพิกัด ] --
+-- [[ 2. สร้าง UI Control Panel ]] --
+local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+screenGui.Name = "ControlPanel"
+screenGui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 150, 0, 180)
+frame.Position = UDim2.new(0.1, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+Instance.new("UICorner", frame)
+
+local label = Instance.new("TextLabel", frame)
+label.Size = UDim2.new(1, 0, 0, 30)
+label.Text = "HACK MENU"
+label.TextColor3 = Color3.new(1, 1, 1)
+label.BackgroundTransparency = 1
+
+local function createBtn(name, pos, color)
+    local btn = Instance.new("TextButton", frame)
+    btn.Name = name
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Position = pos
+    btn.BackgroundColor3 = color
+    btn.Text = name .. ": OFF"
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    Instance.new("UICorner", btn)
+    return btn
+end
+
+local btnTele = createBtn("Teleport", UDim2.new(0.05, 0, 0.2, 0), Color3.fromRGB(200, 50, 50))
+local btnRebirth = createBtn("Rebirth", UDim2.new(0.05, 0, 0.45, 0), Color3.fromRGB(200, 50, 50))
+local btnHire = createBtn("HireMiner", UDim2.new(0.05, 0, 0.7, 0), Color3.fromRGB(200, 50, 50))
+
+-- [[ 3. ฟังก์ชันปุ่มกด ]] --
+btnTele.MouseButton1Click:Connect(function()
+    _G.AutoTeleport = not _G.AutoTeleport
+    btnTele.Text = "Teleport: " .. (_G.AutoTeleport and "ON" or "OFF")
+    btnTele.BackgroundColor3 = _G.AutoTeleport and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+btnRebirth.MouseButton1Click:Connect(function()
+    _G.AutoRebirth = not _G.AutoRebirth
+    btnRebirth.Text = "Rebirth: " .. (_G.AutoRebirth and "ON" or "OFF")
+    btnRebirth.BackgroundColor3 = _G.AutoRebirth and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+btnHire.MouseButton1Click:Connect(function()
+    _G.AutoHire = not _G.AutoHire
+    btnHire.Text = "HireMiner: " .. (_G.AutoHire and "ON" or "OFF")
+    btnHire.BackgroundColor3 = _G.AutoHire and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+-- [[ 4. ระบบ Teleport (โค้ดชุดแรกของคุณ - ไม่แก้ไขโครงสร้าง) ]] --
 local spot1 = CFrame.new(1462.61182, 8, 1585.5) 
 local spot2 = CFrame.new(152.182297, 185, 1934.83044) 
 local spot3 = CFrame.new(165.94252, 188.178406, 1914.70117, 0, 0, 1, 0, 1, -0, -1, 0, 0) 
 local targetPos = Vector3.new(1450.85229, 10.5002451, 1595.5697) 
-
-local isChecking = false
 local minerIdleTimes = {}
 
--- [ 3. ฟังก์ชันค้นหา ] --
-local function getMinersFolder()
-    local root = workspace:FindFirstChild("TycoonModels") and workspace.TycoonModels:FindFirstChild("4030205055")
-    return (root and root:FindFirstChild("Miners")) or workspace:FindFirstChild("Miners", true)
-end
-
-local function findMinecart()
-    local root = workspace:FindFirstChild("TycoonModels") and workspace.TycoonModels:FindFirstChild("4030205055")
-    return (root and root:FindFirstChild("MinecartVehicles") and root.MinecartVehicles:FindFirstChild("MinecartVehicle")) or workspace:FindFirstChild("MinecartVehicle", true)
-end
-
--- [ 4. ฟังก์ชันวาร์ปรถแบบนิ่งสนิท ] --
-local function teleportSafe(vehicle, char, targetCF)
-    if not vehicle or not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    
-    -- ปิดการชนกันชั่วคราวเพื่อไม่ให้ตัวละครดีดรถ
-    for _, part in pairs(vehicle:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-            part.AssemblyLinearVelocity = Vector3.new(0,0,0)
-            part.AssemblyAngularVelocity = Vector3.new(0,0,0)
-        end
-    end
-    
-    vehicle:PivotTo(targetCF)
-    if hrp then hrp.CFrame = targetCF * CFrame.new(0, 3, 0) end -- วาร์ปตัวละครลอยเหนือรถนิดนึง
-    
-    task.wait(1) -- รอให้ฟิสิกส์นิ่ง
-    
-    for _, part in pairs(vehicle:GetDescendants()) do
-        if part:IsA("BasePart") then part.CanCollide = true end
-    end
-end
-
--- [ 5. ลูปการทำงาน ] --
-local function runTeleportSequence()
-    local char = player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChild("Humanoid")
-    if not hrp or not hum then return end
-
-    -- ไปจุด 2 และจัดการรถ
-    task.wait(2)
-    local vehicle = findMinecart()
-    teleportSafe(vehicle, char, spot2)
-
-    -- บังคับกระโดด (ใช้ Velocity + KeyPress)
-    task.wait(1.5)
-    hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0) -- ดีดตัวขึ้น
-    vim:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-    task.wait(0.1)
-    vim:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-    
-    -- ไปจุด 3
-    task.wait(4)
-    hrp.CFrame = spot3
-    
-    -- กดปุ่ม E และ 1
-    local function press(k)
-        vim:SendKeyEvent(true, k, false, game)
-        task.wait(0.2)
-        vim:SendKeyEvent(false, k, false, game)
-    end
-
-    task.wait(4)
-    press(Enum.KeyCode.E)
-    task.wait(4)
-    press(Enum.KeyCode.One)
-    
-    -- กลับจุด 1
-    task.wait(1)
-    hrp.CFrame = spot1
-end
-
--- [ 6. UI ] --
-local screenGui = Instance.new("ScreenGui", player.PlayerGui)
-screenGui.ResetOnSpawn = false
-local toggleBtn = Instance.new("TextButton", screenGui)
-toggleBtn.Size = UDim2.new(0, 50, 0, 30)
-toggleBtn.Position = UDim2.new(0.2, 5.0, 0.15, 0)
-toggleBtn.Text = "OFF"
-toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-Instance.new("UICorner", toggleBtn)
-
-toggleBtn.MouseButton1Click:Connect(function()
-    isChecking = not isChecking
-    toggleBtn.Text = isChecking and "ON" or "OFF"
-    toggleBtn.BackgroundColor3 = isChecking and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(200, 50, 50)
-    if isChecking and player.Character then player.Character.HumanoidRootPart.CFrame = spot1 end
-end)
-
--- [ 7. ลูปเช็ค ] --
 task.spawn(function()
-    while true do
-        if isChecking then
-            local miners = getMinersFolder()
+    while task.wait(1) do
+        if _G.AutoTeleport then
+            local root = workspace:FindFirstChild("TycoonModels") and workspace.TycoonModels:FindFirstChild("4030205055")
+            local miners = (root and root:FindFirstChild("Miners")) or workspace:FindFirstChild("Miners", true)
             local trigger = false
             if miners then
                 for _, m in pairs(miners:GetChildren()) do
                     local p = m:FindFirstChild("HumanoidRootPart") or m:FindFirstChildWhichIsA("BasePart")
-                    if p and (p.Position - targetPos).Magnitude < 10 then 
+                    if p and (p.Position - targetPos).Magnitude < 15 then 
                         minerIdleTimes[m.Name] = (minerIdleTimes[m.Name] or 0) + 1
                         if minerIdleTimes[m.Name] >= 20 then trigger = true break end
                     else minerIdleTimes[m.Name] = 0 end
                 end
             end
-            if trigger then runTeleportSequence() minerIdleTimes = {} end
+            if trigger then
+                -- Teleport Sequence
+                local char = player.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                local vehicle = (root and root:FindFirstChild("MinecartVehicles") and root.MinecartVehicles:FindFirstChild("MinecartVehicle")) or workspace:FindFirstChild("MinecartVehicle", true)
+                if hrp and vehicle then
+                    for _, v in pairs(vehicle:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+                    vehicle:PivotTo(spot2) hrp.CFrame = spot2 * CFrame.new(0, 3, 0)
+                    task.wait(1.5)
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0)
+                    vim:SendKeyEvent(true, Enum.KeyCode.Space, false, game) task.wait(0.1) vim:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                    task.wait(4) hrp.CFrame = spot3 task.wait(4)
+                    vim:SendKeyEvent(true, Enum.KeyCode.E, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    task.wait(4) vim:SendKeyEvent(true, Enum.KeyCode.One, false, game) task.wait(0.2) vim:SendKeyEvent(false, Enum.KeyCode.One, false, game)
+                    task.wait(1) hrp.CFrame = spot1
+                    minerIdleTimes = {}
+                end
+            end
         end
-        task.wait(1)
     end
 end)
 
--- [ 8. ระบบ Direct Auto Rebirth ] --
+-- [[ 5. ระบบ Direct Rebirth (แยกส่วน) ]] --
 task.spawn(function()
     while task.wait(3) do
-        if isChecking then
-            local pGui = player:FindFirstChild("PlayerGui")
-            if not pGui then continue end
-
-            local rebirthScreen = pGui:FindFirstChild("RebirthScreen")
-            local rebirthFrame = rebirthScreen and rebirthScreen:FindFirstChild("Rebirth")
-            local leftHud = pGui:FindFirstChild("LeftHUD")
-
-            -- ฟังก์ชันสั่งรันสัญญาณจากปุ่มโดยตรง
-            local function fireButton(btn)
-                if btn and btn.Visible then
-                    -- สั่งรันโค้ดเบื้องหลังของปุ่ม (MouseButton1Click)
-                    if firesignal then
-                        firesignal(btn.MouseButton1Click)
-                        firesignal(btn.MouseButton1Down)
-                    end
-                    return true
-                end
-                return false
-            end
-
-            -- ตรวจสอบหน้าต่าง Rebirth
-            if rebirthFrame and rebirthFrame.Visible then
-                local container = rebirthFrame:FindFirstChild("ButtonContainer")
-                if container then
-                    for _, btn in pairs(container:GetChildren()) do
-                        if btn:IsA("GuiButton") and btn.Name ~= "Close" and btn.Name ~= "Back" then
-                            fireButton(btn)
-                            print("Direct Rebirth: กดยืนยันแล้ว")
-                            task.wait(3)
-                            break
-                        end
-                    end
-                end
-            else
-                -- ถ้าหน้าต่างปิดอยู่ ให้ลองกดปุ่ม Rebirth ที่ LeftHUD
-                if leftHud then
-                    local openBtn = leftHud:FindFirstChild("Rebirth", true)
-                    if openBtn and openBtn.Visible then
-                        fireButton(openBtn)
-                    end
-                end
+        if _G.AutoRebirth then
+            local openBtn = player.PlayerGui:FindFirstChild("Rebirth", true)
+            if openBtn and openBtn.Visible then
+                events.Rebirth:FireServer()
+                print("Direct Rebirth Sent!")
+                task.wait(2)
             end
         end
     end
 end)
 
--- [ 9. ระบบ Auto Buy Miners (จ้างคนขุด) ] --
+-- [[ 6. ระบบ Direct HireMiner (แยกส่วน) ]] --
 task.spawn(function()
-    while task.wait(4) do
-        if isChecking then
-            local pGui = player.PlayerGui
-            -- 1. ตรวจเช็คหน้าต่าง Miner (ปรับชื่อตามจริงในเครื่องคุณ)
-            local minerScreen = pGui:FindFirstChild("MinerScreen") or pGui:FindFirstChild("ShopScreen")
-            local minerFrame = minerScreen and (minerScreen:FindFirstChild("Main") or minerScreen:FindFirstChild("Frame"))
-            
-            if minerFrame and minerFrame.Visible then
-                -- 2. ค้นหาปุ่มซื้อ (Hire) ภายในรายการ
-                local scrollingFrame = minerFrame:FindFirstChildWhichIsA("ScrollingFrame", true)
-                if scrollingFrame then
-                    for _, item in pairs(scrollingFrame:GetChildren()) do
-                        -- ค้นหาปุ่ม "Hire" หรือ "จ้าง"
-                        local buyBtn = item:FindFirstChild("Buy") or item:FindFirstChild("Hire") or item:FindFirstChildWhichIsA("GuiButton", true)
-                        if buyBtn and buyBtn.Visible then
-                            forceClick(buyBtn)
-                            task.wait(0.5) -- กันการซื้อรัวเกินไปจนเงินติดลบ
-                        end
-                    end
-                end
-            else
-                -- 3. ถ้าหน้าต่างไม่เปิด ให้หาปุ่มเปิดเมนู "คนขุดแร่"
-                local leftHud = pGui:FindFirstChild("LeftHUD")
-                local openMinerBtn = leftHud and (leftHud:FindFirstChild("Miners", true) or leftHud:FindFirstChild("Shop", true))
-                if openMinerBtn then forceClick(openMinerBtn) end
+    while task.wait(3) do
+        if _G.AutoHire then
+            for i = 1, 12 do -- จ้าง ID 1 ถึง 12
+                events.HireMiner:FireServer(i)
             end
         end
     end
