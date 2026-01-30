@@ -8,7 +8,8 @@ local fileName = "MinerTycoon_Config_Final.json"
 local function SaveSettings()
     local data = {
         TeleportEnabled = _G.TeleportEnabled,
-        RebirthEnabled = _G.RebirthEnabled
+        RebirthEnabled = _G.RebirthEnabled,
+        MinerEnabled = _G.MinerEnabled -- เพิ่มการบันทึกค่าซื้อคนขุด
     }
     writefile(fileName, HttpService:JSONEncode(data))
 end
@@ -19,22 +20,24 @@ local function LoadSettings()
         if success then
             _G.TeleportEnabled = data.TeleportEnabled or false
             _G.RebirthEnabled = data.RebirthEnabled or false
+            _G.MinerEnabled = data.MinerEnabled or false
         end
     else
         _G.TeleportEnabled = false
         _G.RebirthEnabled = false
+        _G.MinerEnabled = false
     end
 end
 
 LoadSettings()
 
--- [[ 1. สร้าง UI Control Panel (แบบจำค่าเดิม) ]] --
+-- [[ 1. สร้าง UI Control Panel ]] --
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 screenGui.Name = "MinerTycoon_Hybrid_Final"
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 160, 0, 160)
+mainFrame.Size = UDim2.new(0, 160, 0, 215) -- ขยายขนาดเพื่อรองรับปุ่มที่ 3
 mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.Draggable = true
@@ -61,12 +64,11 @@ content.Size = UDim2.new(1, 0, 1, -35)
 content.Position = UDim2.new(0, 0, 0, 35)
 content.BackgroundTransparency = 1
 
--- ฟังก์ชันพับ UI
 local isCollapsed = false
 toggleMenu.MouseButton1Click:Connect(function()
     isCollapsed = not isCollapsed
     content.Visible = not isCollapsed
-    mainFrame.Size = isCollapsed and UDim2.new(0, 160, 0, 32) or UDim2.new(0, 160, 0, 160)
+    mainFrame.Size = isCollapsed and UDim2.new(0, 160, 0, 32) or UDim2.new(0, 160, 0, 215)
     toggleMenu.Text = isCollapsed and "+" or "-"
 end)
 
@@ -88,14 +90,15 @@ local function createToggle(name, pos, globalVar)
     btn.MouseButton1Click:Connect(function()
         _G[globalVar] = not _G[globalVar]
         updateVisuals()
-        SaveSettings() -- บันทึกค่าทันที
+        SaveSettings()
     end)
 end
 
 createToggle("Auto Farm", UDim2.new(0, 10, 0, 5), "TeleportEnabled")
 createToggle("Auto Rebirth", UDim2.new(0, 10, 0, 60), "RebirthEnabled")
+createToggle("Auto Miner", UDim2.new(0, 10, 0, 115), "MinerEnabled") -- ปุ่มใหม่
 
--- [[ 2. ระบบ DIRECT AUTO REBIRTH (ตรรกะดีที่สุดของคุณ) ]] --
+-- [[ 2. ระบบ DIRECT AUTO REBIRTH ]] --
 task.spawn(function()
     while task.wait(2) do
         if _G.RebirthEnabled then
@@ -105,7 +108,7 @@ task.spawn(function()
             local rebirthFrame = rebirthScreen and rebirthScreen:FindFirstChild("Rebirth")
 
             local isReady = (leftHud and leftHud:FindFirstChild("Rebirth", true) and leftHud:FindFirstChild("Rebirth", true).Visible) 
-                             or (rebirthFrame and rebirthFrame.Visible)
+                            or (rebirthFrame and rebirthFrame.Visible)
 
             if isReady then
                 local rbRemote = game:GetService("ReplicatedStorage"):FindFirstChild("Rebirth", true)
@@ -136,7 +139,7 @@ task.spawn(function()
     end
 end)
 
--- [[ 3. ระบบ TELEPORT FARM (ตรรกะดีที่สุดของคุณ) ]] --
+-- [[ 3. ระบบ TELEPORT FARM ]] --
 task.spawn(function()
     local spotWait = CFrame.new(1462.61182, 8, 1585.5) 
     local spotCar = CFrame.new(1420.23901, 12.1875057, 1602.05542) 
@@ -188,7 +191,21 @@ task.spawn(function()
     end
 end)
 
--- [[ 4. ระบบ Anti-AFK ]] --
+-- [[ 4. ระบบ AUTO BUY MINER (ใช้ Remote ที่ดักจับมา) ]] --
+task.spawn(function()
+    while task.wait(5) do
+        if _G.MinerEnabled then
+            pcall(function()
+                local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UIDataRequests"):WaitForChild("BuyMiner")
+                if remote then
+                    remote:InvokeServer()
+                end
+            end)
+        end
+    end
+end)
+
+-- [[ 5. ระบบ Anti-AFK ]] --
 local vu = game:GetService("VirtualUser")
 player.Idled:Connect(function()
     vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -197,4 +214,4 @@ player.Idled:Connect(function()
     print("Anti-AFK Working")
 end)
 
-print("MinerTycoon Hybrid Final: Loaded with Save/Load and Fixed UI!")
+print("MinerTycoon Hybrid Final: Loaded with Auto Miner!")
