@@ -9,7 +9,7 @@ local function SaveSettings()
     local data = {
         TeleportEnabled = _G.TeleportEnabled,
         RebirthEnabled = _G.RebirthEnabled,
-        MinerEnabled = _G.MinerEnabled -- เพิ่มการบันทึกค่าซื้อคนขุด
+        MinerEnabled = _G.MinerEnabled
     }
     writefile(fileName, HttpService:JSONEncode(data))
 end
@@ -37,7 +37,7 @@ screenGui.Name = "MinerTycoon_Hybrid_Final"
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 160, 0, 215) -- ขยายขนาดเพื่อรองรับปุ่มที่ 3
+mainFrame.Size = UDim2.new(0, 160, 0, 215)
 mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.Draggable = true
@@ -96,9 +96,9 @@ end
 
 createToggle("Auto Farm", UDim2.new(0, 10, 0, 5), "TeleportEnabled")
 createToggle("Auto Rebirth", UDim2.new(0, 10, 0, 60), "RebirthEnabled")
-createToggle("Auto Miner", UDim2.new(0, 10, 0, 115), "MinerEnabled") -- ปุ่มใหม่
+createToggle("Auto Miner", UDim2.new(0, 10, 0, 115), "MinerEnabled")
 
--- [[ 2. ระบบ DIRECT AUTO REBIRTH ]] --
+-- [[ 2. ระบบ DIRECT AUTO REBIRTH (คงเดิม 100%) ]] --
 task.spawn(function()
     while task.wait(2) do
         if _G.RebirthEnabled then
@@ -139,7 +139,7 @@ task.spawn(function()
     end
 end)
 
--- [[ 3. ระบบ TELEPORT FARM ]] --
+-- [[ 3. ระบบ TELEPORT FARM (คงเดิม 100%) ]] --
 task.spawn(function()
     local spotWait = CFrame.new(1462.61182, 8, 1585.5) 
     local spotCar = CFrame.new(1420.23901, 12.1875057, 1602.05542) 
@@ -191,21 +191,46 @@ task.spawn(function()
     end
 end)
 
--- [[ 4. ระบบ AUTO BUY MINER (ใช้ Remote ที่ดักจับมา) ]] --
+-- [[ 4. ระบบ AUTO BUY MINER, PICKAXE & BACKPACK (รวมคำสั่งใหม่) ]] --
 task.spawn(function()
     while task.wait(5) do
         if _G.MinerEnabled then
             pcall(function()
-                local remote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UIDataRequests"):WaitForChild("BuyMiner")
-                if remote then
-                    remote:InvokeServer()
+                local rs = game:GetService("ReplicatedStorage")
+                local requests = rs:WaitForChild("Remotes"):WaitForChild("UIDataRequests")
+                
+                -- 1. ซื้อคนขุดเพิ่ม
+                local buyMinerRemote = requests:FindFirstChild("BuyMiner")
+                if buyMinerRemote then buyMinerRemote:InvokeServer() end
+                
+                -- 2. วนลูปอัปเกรดคนงานทุกคนใน Workspace
+                local minersFolder = workspace:FindFirstChild("Miners", true)
+                local buyPickaxe = requests:FindFirstChild("BuyClonePickaxe")
+                local buyBackpack = requests:FindFirstChild("BuyCloneBackpack")
+                
+                if minersFolder then
+                    for _, miner in pairs(minersFolder:GetChildren()) do
+                        local minerID = tonumber(miner.Name)
+                        if minerID then
+                            -- ซื้อที่ขุด Void Alloy
+                            if buyPickaxe then
+                                buyPickaxe:InvokeServer("Iron", minerID)
+                            end
+                            task.wait(0.1)
+                            -- ซื้อกระเป๋า Quantumn
+                            if buyBackpack then
+                                buyBackpack:InvokeServer("Quantumn", minerID)
+                            end
+                            task.wait(0.1)
+                        end
+                    end
                 end
             end)
         end
     end
 end)
 
--- [[ 5. ระบบ Anti-AFK ]] --
+-- [[ 5. ระบบ Anti-AFK (คงเดิม 100%) ]] --
 local vu = game:GetService("VirtualUser")
 player.Idled:Connect(function()
     vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -214,4 +239,4 @@ player.Idled:Connect(function()
     print("Anti-AFK Working")
 end)
 
-print("MinerTycoon Hybrid Final: Loaded with Auto Miner!")
+print("MinerTycoon Hybrid Final: Auto Buy Miner + Pickaxe + Backpack Loaded!")
