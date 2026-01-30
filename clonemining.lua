@@ -163,3 +163,14 @@ task.spawn(function()
         end
     end
 end)
+-- [[ 5. ระบบ Anti-AFK (กันหลุดจากการหยุดนิ่ง) ]] --
+local vu = game:GetService("VirtualUser")
+player.Idled:Connect(function()
+    vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    print("Anti-AFK: ทำงานเพื่อป้องกันการหลุดจากเซิร์ฟเวอร์")
+end)
+
+-- แจ้งเตือนใน Console เมื่อสคริปต์รันสำเร็จ
+print("MinerTycoon Hybrid V3: สคริปต์เริ่มทำงานแล้ว!")
