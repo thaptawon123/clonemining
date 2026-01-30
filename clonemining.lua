@@ -222,7 +222,7 @@ task.spawn(function()
                         -- ซื้อที่ขุด Void Alloy
                         if _G.PickaxeEnabled then
                             local buyPickaxe = requests:FindFirstChild("BuyClonePickaxe")
-                            if buyPickaxe then buyPickaxe:InvokeServer("Void Alloy", minerID) end
+                            if buyPickaxe then buyPickaxe:InvokeServer("Premium", minerID) end
                             task.wait(0.1)
                         end
                         -- ซื้อกระเป๋า Quantumn
