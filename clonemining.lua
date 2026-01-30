@@ -9,7 +9,9 @@ local function SaveSettings()
     local data = {
         TeleportEnabled = _G.TeleportEnabled,
         RebirthEnabled = _G.RebirthEnabled,
-        MinerEnabled = _G.MinerEnabled
+        MinerEnabled = _G.MinerEnabled,
+        PickaxeEnabled = _G.PickaxeEnabled,
+        BackpackEnabled = _G.BackpackEnabled
     }
     writefile(fileName, HttpService:JSONEncode(data))
 end
@@ -21,11 +23,15 @@ local function LoadSettings()
             _G.TeleportEnabled = data.TeleportEnabled or false
             _G.RebirthEnabled = data.RebirthEnabled or false
             _G.MinerEnabled = data.MinerEnabled or false
+            _G.PickaxeEnabled = data.PickaxeEnabled or false
+            _G.BackpackEnabled = data.BackpackEnabled or false
         end
     else
         _G.TeleportEnabled = false
         _G.RebirthEnabled = false
         _G.MinerEnabled = false
+        _G.PickaxeEnabled = false
+        _G.BackpackEnabled = false
     end
 end
 
@@ -37,7 +43,7 @@ screenGui.Name = "MinerTycoon_Hybrid_Final"
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame", screenGui)
-mainFrame.Size = UDim2.new(0, 160, 0, 215)
+mainFrame.Size = UDim2.new(0, 160, 0, 325) -- ขนาดรองรับ 5 ปุ่ม
 mainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 mainFrame.Draggable = true
@@ -68,7 +74,7 @@ local isCollapsed = false
 toggleMenu.MouseButton1Click:Connect(function()
     isCollapsed = not isCollapsed
     content.Visible = not isCollapsed
-    mainFrame.Size = isCollapsed and UDim2.new(0, 160, 0, 32) or UDim2.new(0, 160, 0, 215)
+    mainFrame.Size = isCollapsed and UDim2.new(0, 160, 0, 32) or UDim2.new(0, 160, 0, 325)
     toggleMenu.Text = isCollapsed and "+" or "-"
 end)
 
@@ -94,9 +100,12 @@ local function createToggle(name, pos, globalVar)
     end)
 end
 
+-- สร้างปุ่มควบคุม
 createToggle("Auto Farm", UDim2.new(0, 10, 0, 5), "TeleportEnabled")
 createToggle("Auto Rebirth", UDim2.new(0, 10, 0, 60), "RebirthEnabled")
-createToggle("Auto Miner", UDim2.new(0, 10, 0, 115), "MinerEnabled")
+createToggle("Buy Miner", UDim2.new(0, 10, 0, 115), "MinerEnabled")
+createToggle("Buy Pickaxe", UDim2.new(0, 10, 0, 170), "PickaxeEnabled")
+createToggle("Buy Backpack", UDim2.new(0, 10, 0, 225), "BackpackEnabled")
 
 -- [[ 2. ระบบ DIRECT AUTO REBIRTH (คงเดิม 100%) ]] --
 task.spawn(function()
@@ -191,42 +200,41 @@ task.spawn(function()
     end
 end)
 
--- [[ 4. ระบบ AUTO BUY MINER, PICKAXE & BACKPACK (รวมคำสั่งใหม่) ]] --
+-- [[ 4. ระบบ AUTO BUY (Miner + Pickaxe + Backpack) ]] --
 task.spawn(function()
     while task.wait(5) do
-        if _G.MinerEnabled then
-            pcall(function()
-                local rs = game:GetService("ReplicatedStorage")
-                local requests = rs:WaitForChild("Remotes"):WaitForChild("UIDataRequests")
-                
-                -- 1. ซื้อคนขุดเพิ่ม
+        pcall(function()
+            local rs = game:GetService("ReplicatedStorage")
+            local requests = rs:WaitForChild("Remotes"):WaitForChild("UIDataRequests")
+            
+            -- ซื้อคนงาน
+            if _G.MinerEnabled then
                 local buyMinerRemote = requests:FindFirstChild("BuyMiner")
                 if buyMinerRemote then buyMinerRemote:InvokeServer() end
-                
-                -- 2. วนลูปอัปเกรดคนงานทุกคนใน Workspace
-                local minersFolder = workspace:FindFirstChild("Miners", true)
-                local buyPickaxe = requests:FindFirstChild("BuyClonePickaxe")
-                local buyBackpack = requests:FindFirstChild("BuyCloneBackpack")
-                
-                if minersFolder then
-                    for _, miner in pairs(minersFolder:GetChildren()) do
-                        local minerID = tonumber(miner.Name)
-                        if minerID then
-                            -- ซื้อที่ขุด Void Alloy
-                            if buyPickaxe then
-                                buyPickaxe:InvokeServer("Iron", minerID)
-                            end
+            end
+            
+            -- อัปเกรดไอเทมคนงานทุกคนที่เจอใน Workspace
+            local minersFolder = workspace:FindFirstChild("Miners", true)
+            if minersFolder then
+                for _, miner in pairs(minersFolder:GetChildren()) do
+                    local minerID = tonumber(miner.Name)
+                    if minerID then
+                        -- ซื้อที่ขุด Void Alloy
+                        if _G.PickaxeEnabled then
+                            local buyPickaxe = requests:FindFirstChild("BuyClonePickaxe")
+                            if buyPickaxe then buyPickaxe:InvokeServer("Void Alloy", minerID) end
                             task.wait(0.1)
-                            -- ซื้อกระเป๋า Quantumn
-                            if buyBackpack then
-                                buyBackpack:InvokeServer("Quantumn", minerID)
-                            end
+                        end
+                        -- ซื้อกระเป๋า Quantumn
+                        if _G.BackpackEnabled then
+                            local buyBackpack = requests:FindFirstChild("BuyCloneBackpack")
+                            if buyBackpack then buyBackpack:InvokeServer("Quantumn", minerID) end
                             task.wait(0.1)
                         end
                     end
                 end
-            end)
-        end
+            end
+        end)
     end
 end)
 
@@ -239,4 +247,4 @@ player.Idled:Connect(function()
     print("Anti-AFK Working")
 end)
 
-print("MinerTycoon Hybrid Final: Auto Buy Miner + Pickaxe + Backpack Loaded!")
+print("MinerTycoon Hybrid Final: All Features Loaded!")
